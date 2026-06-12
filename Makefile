@@ -24,3 +24,6 @@ $(TARGET).bin: $(TARGET).elf
 
 clean:
 	rm -f *.elf *.bin
+	
+flash: $(TARGET).bin
+	st-flash write $(TARGET).bin 0x08000000
