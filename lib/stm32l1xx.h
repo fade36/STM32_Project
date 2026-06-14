@@ -10,6 +10,14 @@
 #define RCC_BASE              (AHBPERIPH_BASE + 0x00003800)
 #define GPIOA_BASE            (IOPPERIPH_BASE + 0x00000000)
 #define GPIOB_BASE            (IOPPERIPH_BASE + 0x00000400)
+#define SysTick_BASE		  ((unsigned int)0xE000E010)
+
+typedef struct {
+	__IO unsigned int CTRL;
+	__IO unsigned int LOAD;
+	__IO unsigned int VAL;
+	__IO unsigned int CALIB;
+}SysTick_TypeDef;
 
 typedef struct {
     __IO unsigned int MODER;
@@ -34,6 +42,7 @@ typedef struct {
     __IO unsigned int APB1ENR;
 } RCC_TypeDef;
 
+#define SysTick				((SysTick_TypeDef *) SysTick_BASE)
 #define RCC                 ((RCC_TypeDef *) RCC_BASE)
 #define GPIOA               ((GPIO_TypeDef *) GPIOA_BASE)
 #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
