@@ -10,16 +10,16 @@
 #define RCC_BASE              (AHBPERIPH_BASE + 0x00003800)
 #define GPIOA_BASE            (IOPPERIPH_BASE + 0x00000000)
 #define GPIOB_BASE            (IOPPERIPH_BASE + 0x00000400)
-#define SysTick_BASE		  ((unsigned int)0xE000E010)
-#define PWR_BASE              ((unsigned int)0x40003800)
-#define RTC_BASE              ((unsigned int)0x40002800)
+#define SysTick_BASE          ((unsigned int)0xE000E010)
+#define PWR_BASE              ((unsigned int)0x40007000)
+#define RTC_BASE              ((unsigned int)0x40002400)
 
 typedef struct {
-	__IO unsigned int CTRL;
-	__IO unsigned int LOAD;
-	__IO unsigned int VAL;
-	__IO unsigned int CALIB;
-}SysTick_TypeDef;
+    __IO unsigned int CTRL;
+    __IO unsigned int LOAD;
+    __IO unsigned int VAL;
+    __IO unsigned int CALIB;
+} SysTick_TypeDef;
 
 typedef struct {
     __IO unsigned int MODER;
@@ -50,10 +50,11 @@ typedef struct {
 
 typedef struct {
     __IO unsigned int CR; 
+    __IO unsigned int CSR; 
 } PWR_TypeDef;
 
 typedef struct {
-    __IO unsigned int TR;
+    __IO unsigned int TR; 
     __IO unsigned int DR;
     __IO unsigned int CR;
     __IO unsigned int ISR;
@@ -65,14 +66,14 @@ typedef struct {
     __IO unsigned int WPR;
 } RTC_TypeDef;
 
+#define SysTick               ((SysTick_TypeDef *) SysTick_BASE)
+#define RCC                   ((RCC_TypeDef *) RCC_BASE)
+#define GPIOA                 ((GPIO_TypeDef *) GPIOA_BASE)
+#define GPIOB                 ((GPIO_TypeDef *) GPIOB_BASE)
 #define PWR                   ((PWR_TypeDef *) PWR_BASE)
-#define SysTick				((SysTick_TypeDef *) SysTick_BASE)
-#define RCC                 ((RCC_TypeDef *) RCC_BASE)
-#define GPIOA               ((GPIO_TypeDef *) GPIOA_BASE)
-#define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
 #define RTC                   ((RTC_TypeDef *) RTC_BASE)
 
-#define RCC_AHBENR_GPIOAEN  ((unsigned int)0x00000001)
-#define RCC_AHBENR_GPIOBEN  ((unsigned int)0x00000002)
+#define RCC_AHBENR_GPIOAEN    ((unsigned int)0x00000001)
+#define RCC_AHBENR_GPIOBEN    ((unsigned int)0x00000002)
 
 #endif
