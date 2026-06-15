@@ -11,6 +11,8 @@
 #define GPIOA_BASE            (IOPPERIPH_BASE + 0x00000000)
 #define GPIOB_BASE            (IOPPERIPH_BASE + 0x00000400)
 #define SysTick_BASE		  ((unsigned int)0xE000E010)
+#define PWR_BASE              ((unsigned int)0x40003800)
+#define RTC_BASE              ((unsigned int)0x40002800)
 
 typedef struct {
 	__IO unsigned int CTRL;
@@ -40,12 +42,35 @@ typedef struct {
     __IO unsigned int AHBENR;
     __IO unsigned int APB2ENR;
     __IO unsigned int APB1ENR;
+    __IO unsigned int AHBLPENR;
+    __IO unsigned int APB2LPENR;
+    __IO unsigned int APB1LPENR;
+    __IO unsigned int CSR;
 } RCC_TypeDef;
 
+typedef struct {
+    __IO unsigned int CR; 
+} PWR_TypeDef;
+
+typedef struct {
+    __IO unsigned int TR;
+    __IO unsigned int DR;
+    __IO unsigned int CR;
+    __IO unsigned int ISR;
+    __IO unsigned int PRER;
+    __IO unsigned int WUTR;
+    __IO unsigned int CALIBR;
+    __IO unsigned int ALRMAR;
+    __IO unsigned int ALRMBR;
+    __IO unsigned int WPR;
+} RTC_TypeDef;
+
+#define PWR                   ((PWR_TypeDef *) PWR_BASE)
 #define SysTick				((SysTick_TypeDef *) SysTick_BASE)
 #define RCC                 ((RCC_TypeDef *) RCC_BASE)
 #define GPIOA               ((GPIO_TypeDef *) GPIOA_BASE)
 #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
+#define RTC                   ((RTC_TypeDef *) RTC_BASE)
 
 #define RCC_AHBENR_GPIOAEN  ((unsigned int)0x00000001)
 #define RCC_AHBENR_GPIOBEN  ((unsigned int)0x00000002)
