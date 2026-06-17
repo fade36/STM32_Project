@@ -4,6 +4,10 @@
 #define RTC_WRITE_KEY2        0x53U
 #define RTC_WRITE_LOCK        0xFFU
 
+static uint32_t elapsed_seconds = 0;
+static uint32_t elapsed_hours = 0;
+static uint32_t elapsed_days = 0;
+
 void GPIO_Init(void) {
 
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN;
@@ -46,16 +50,15 @@ int main(void) {
 	GPIO_Init();
     RTC_Init_LSI ();
     
-    
-    uint32_t prev_sec = RTC->TR;
+    uint32_t prev_sec = RTC->TR & 0x7FU;
     uint32_t led_state = 0;
     
     while(1){
     
-    uint32_t cur_sec = RTC->TR;
+    uint32_t cur_sec = RTC->TR & 0x7FU;
         
     	if(prev_sec != cur_sec) {
-    	
+    	elapsed_seconds++;
     	prev_sec = cur_sec;
     	
     	if(led_state == 0) {
@@ -71,16 +74,28 @@ int main(void) {
     	
     	}
     	
+    	if(elapsed_seconds >= 3600) {
+    		elapsed_hours++;
+    		elapsed_seconds = 0;
+    	}
+    	if(elapsed_hours >= 24) {
+    		elapsed_days++;
+    		elapsed_hours = 0;
+    	}
+    	
     	}
     }
-            
-  /*  while(1) {
-        if (GPIOA->IDR & 1U) {
-            GPIOB->ODR |= (1U << 7);
-        } else {
-            GPIOB->ODR &= ~(1U << 7);
-        }
-    }*/
+    
+    /*
+     while(1) {
+    if (GPIOA->IDR & 1U) {
+		GPIOB->ODR |= (1U << 7);
+	}
+	else {
+	}
+	GPIOB->ODR &= ~(1U << 7);
+    }
+    */
     
     return 0;
 }
