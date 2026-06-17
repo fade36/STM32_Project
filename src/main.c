@@ -45,16 +45,42 @@ int main(void) {
 
 	GPIO_Init();
     RTC_Init_LSI ();
+    
+    
+    uint32_t prev_sec = RTC->TR;
+    uint32_t led_state = 0;
+    
+    while(1){
+    
+    uint32_t cur_sec = RTC->TR;
         
-        
-        
-    while(1) {
+    	if(prev_sec != cur_sec) {
+    	
+    	prev_sec = cur_sec;
+    	
+    	if(led_state == 0) {
+    	
+    	GPIOB->ODR |= (1U << 7);
+    	led_state = 1;
+    	
+    	}
+    	else {
+    	
+    	GPIOB->ODR &= ~(1U << 7);
+    	led_state = 0;
+    	
+    	}
+    	
+    	}
+    }
+            
+  /*  while(1) {
         if (GPIOA->IDR & 1U) {
             GPIOB->ODR |= (1U << 7);
         } else {
             GPIOB->ODR &= ~(1U << 7);
         }
-    }
+    }*/
     
     return 0;
 }
