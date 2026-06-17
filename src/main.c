@@ -27,11 +27,13 @@ int main(void) {
     RTC->ISR |= (1U << 7); 
     for (volatile int i = 0; i < 2000; i++) {}
 
-    RTC->PRER = (0x63U << 16) | 0x0171U;
+	RTC->PRER = (0x007CU << 16) | 0x0127U;
 
     RTC->ISR &= ~(1U << 7);
 
     RTC->WPR = 0xFF;
+    
+    
 
     while(1) {
         if (GPIOA->IDR & 1U) {
