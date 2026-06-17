@@ -8,6 +8,10 @@ static uint32_t elapsed_seconds = 0;
 static uint32_t elapsed_hours = 0;
 static uint32_t elapsed_days = 0;
 
+#define SLEEPING_MODE 0
+#define SHOWTIME_MODE 1
+#define RESET_MODE 2
+
 void GPIO_Init(void) {
 
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN;
@@ -50,30 +54,32 @@ int main(void) {
 	GPIO_Init();
     RTC_Init_LSI ();
     
+    GPIOB->ODR &= ~(1U << 7);
     uint32_t prev_sec = RTC->TR & 0x7FU;
     uint32_t led_state = 0;
+    uint32_t mode = SLEEPING_MODE;
+    uint32_t prev_button = GPIOA->IDR & 1U;
     
-    while(1){
     
-    uint32_t cur_sec = RTC->TR & 0x7FU;
-        
+    while (1) {
+    	uint32_t cur_button = GPIOA->IDR & 1U;
+    	uint32_t cur_sec = RTC->TR & 0x7FU;
+    	
     	if(prev_sec != cur_sec) {
-    	elapsed_seconds++;
-    	prev_sec = cur_sec;
-    	
-    	if(led_state == 0) {
-    	
-    	GPIOB->ODR |= (1U << 7);
-    	led_state = 1;
-    	
-    	}
+    		
+    			elapsed_seconds++;
+    			prev_sec = cur_sec;
+    			
+    	if (mode == SHOWTIME_MODE) {
+    				if(led_state == 0) {
+    			GPIOB->ODR |= (1U << 7);
+    			led_state = 1;
+    		}
     	else {
-    	
-    	GPIOB->ODR &= ~(1U << 7);
-    	led_state = 0;
-    	
-    	}
-    	
+    			GPIOB->ODR &= ~(1U << 7);
+    			led_state = 0;
+    		}
+    			}   			  
     	if(elapsed_seconds >= 3600) {
     		elapsed_hours++;
     		elapsed_seconds = 0;
@@ -82,20 +88,30 @@ int main(void) {
     		elapsed_days++;
     		elapsed_hours = 0;
     	}
-    	
     	}
+    	
+    	if ((prev_button==0) && (cur_button != 0)) {
+    		if(mode == SLEEPING_MODE) {
+    			mode = SHOWTIME_MODE;
+    		}
+    		else if(mode == SHOWTIME_MODE) {
+    		mode = RESET_MODE;
+    		GPIOB->ODR |= (1U << 7);
+    		}
+    		else if (mode == RESET_MODE) {
+    		mode = SLEEPING_MODE;
+    		elapsed_seconds = 0;
+    		elapsed_hours = 0;
+    		elapsed_days = 0;
+    		led_state = 0;
+    		GPIOB->ODR &= ~(1U << 7); 
+    		}
+    		
+    	}
+    	prev_button = cur_button;
+    	
     }
     
-    /*
-     while(1) {
-    if (GPIOA->IDR & 1U) {
-		GPIOB->ODR |= (1U << 7);
-	}
-	else {
-	}
-	GPIOB->ODR &= ~(1U << 7);
-    }
-    */
     
     return 0;
 }
