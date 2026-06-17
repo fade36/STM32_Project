@@ -80,8 +80,9 @@ typedef struct {
     __IO uint32_t FCR;
     __IO uint32_t SR;
     __IO uint32_t CLR;
-    __IO uint32_t RAM[16];
-    uint32_t RESERVED0;
+    uint32_t RESERVED0; // 0х10 (nothing)
+    __IO uint32_t RAM[16]; // 0x14
+
 } LCD_TypeDef;
 
 #define SysTick               ((SysTick_TypeDef *) SysTick_BASE)
@@ -95,7 +96,7 @@ typedef struct {
 
 #define RCC_AHBENR_GPIOAEN    ((uint32_t)0x00000001)
 #define RCC_AHBENR_GPIOBEN    ((uint32_t)0x00000002)
-#define RCC_AHBENR_GPIOBEN    ((uint32_t)0x00000004)
+#define RCC_AHBENR_GPIOCEN    ((uint32_t)0x00000004)
 
 #define RCC_APB1ENR_LCDEN     ((uint32_t)0x00000200)
 #define RCC_APB1ENR_PWREN     ((uint32_t)0x10000000)
