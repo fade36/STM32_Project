@@ -59,6 +59,7 @@ int main(void) {
     uint32_t led_state = 0;
     uint32_t mode = SLEEPING_MODE;
     uint32_t prev_button = GPIOA->IDR & 1U;
+    uint32_t check30 = 0;
     
     
     while (1) {
@@ -66,7 +67,9 @@ int main(void) {
     	uint32_t cur_sec = RTC->TR & 0x7FU;
     	
     	if(prev_sec != cur_sec) {
-    		
+    			if(mode != SLEEPING_MODE) {
+    				check30++;
+    			}
     			elapsed_seconds++;
     			prev_sec = cur_sec;
     			
@@ -90,15 +93,28 @@ int main(void) {
     	}
     	}
     	
-    	if ((prev_button==0) && (cur_button != 0)) {
+    	if(mode != SLEEPING_MODE && check30 > 30) {
+    		led_state = 0;
+    		GPIOB->ODR &= ~(1U << 7);
+    		mode = SLEEPING_MODE;
+    		check30 = 0;
+    	}
+    	
+    	if ((prev_button == 0) && (cur_button != 0)) {
+    	
     		if(mode == SLEEPING_MODE) {
+    			check30 = 0;
     			mode = SHOWTIME_MODE;
     		}
-    		else if(mode == SHOWTIME_MODE) {
+    		
+    		else if(mode == SHOWTIME_MODE && check30 <= 30) {
+    		check30 = 0;
     		mode = RESET_MODE;
     		GPIOB->ODR |= (1U << 7);
     		}
-    		else if (mode == RESET_MODE) {
+    		
+    		else if (mode == RESET_MODE && check30 <= 30) {
+    		check30 = 0;
     		mode = SLEEPING_MODE;
     		elapsed_seconds = 0;
     		elapsed_hours = 0;
