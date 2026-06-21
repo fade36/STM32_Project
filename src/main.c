@@ -97,88 +97,104 @@ void LCD_GPIO_Init(void) {
 	Set_PIN_TO_AF11(GPIOC, 11U); // PC11
 	
 }
+
+void LCD_enable(void) {
+
+	    RCC->APB1ENR |= RCC_APB1ENR_LCDEN;
+	    
+	    LCD->CR &= ~(3U << 5);	// BIAS 1/3
+	    LCD->CR |= (2U << 5);
+	    
+	    LCD->CR &= ~(7U << 2);	// DUTY 1/4
+	    LCD->CR |= (3U << 2);
+	    
+	    LCD->CR &= ~(1U << 1);	// VSEL 0
+	    
+	    while ((LCD->SR & (1U << 5)) == 0U) {}
+	    
+	    LCD->FCR &= ~(15U << 22);	// PS /32
+	    LCD->FCR |= (5U << 22);
+	    
+	    LCD->FCR &= ~(15U << 18);	// DIV /16
+	    
+	    LCD->FCR &= ~(7U << 10);	// CC max
+		LCD->FCR |=  (7U << 10);
+	    
+	    LCD->CR |= 1U;	// LCDEN 1
+	    
+}
+
+void LCD_Clear(void) {
+    for (uint32_t i = 0; i < 16U; i++) {
+        LCD->RAM[i] = 0U;
+    }
+}
+
+void LCD_Update(void) {
+    LCD->SR |= (1U << 2);                  // UDR
+    while ((LCD->SR & (1U << 3)) == 0U) {} // wait UDD
+    LCD->CLR |= (1U << 3);                 // clear UDD
+}
+
+void LCD_SetSegment(uint32_t seg, uint32_t com) {
+
+    uint32_t ram_index = com * 2U;
+
+    LCD->RAM[ram_index] |= (1U << seg);
+}
+
+
+
+
 int main(void) {
 
 	GPIO_Init();
     RTC_Init_LSI ();
 	LCD_GPIO_Init();
+	LCD_enable();
+	GPIOB->ODR &= ~(1U << 7);
+	
     
-    RCC->APB1ENR |= RCC_APB1ENR_LCDEN;
-    
-    GPIOB->ODR &= ~(1U << 7);
     uint32_t prev_sec = RTC->TR & 0x7FU;
-    uint32_t led_state = 0;
-    uint32_t mode = SLEEPING_MODE;
-    uint32_t prev_button = GPIOA->IDR & 1U;
-    uint32_t check30 = 0;
-    
-    
-    while (1) {
-    	uint32_t cur_button = GPIOA->IDR & 1U;
-    	uint32_t cur_sec = RTC->TR & 0x7FU;
-    	
-    	if(prev_sec != cur_sec) {
-    			if(mode != SLEEPING_MODE) {
-    				check30++;
-    			}
-    			elapsed_seconds++;
-    			prev_sec = cur_sec;
-    			
-    	if (mode == SHOWTIME_MODE) {
-    				if(led_state == 0) {
-    			GPIOB->ODR |= (1U << 7);
-    			led_state = 1;
-    		}
-    	else {
-    			GPIOB->ODR &= ~(1U << 7);
-    			led_state = 0;
-    		}
-    			}   			  
-    	if(elapsed_seconds >= 3600) {
-    		elapsed_hours++;
-    		elapsed_seconds = 0;
-    	}
-    	if(elapsed_hours >= 24) {
-    		elapsed_days++;
-    		elapsed_hours = 0;
-    	}
-    	}
-    	
-    	if(mode != SLEEPING_MODE && check30 >= 30) {
-    		led_state = 0;
-    		GPIOB->ODR &= ~(1U << 7);
-    		mode = SLEEPING_MODE;
-    		check30 = 0;
-    	}
-    	
-    	if ((prev_button == 0) && (cur_button != 0)) {
-    	
-    		if(mode == SLEEPING_MODE) {
-    			check30 = 0;
-    			mode = SHOWTIME_MODE;
-    		}
-    		
-    		else if(mode == SHOWTIME_MODE && check30 <= 30) {
-    		check30 = 0;
-    		mode = RESET_MODE;
-    		led_state = 1;
-    		GPIOB->ODR |= (1U << 7);
-    		}
-    		
-    		else if (mode == RESET_MODE && check30 <= 30) {
-    		check30 = 0;
-    		mode = SLEEPING_MODE;
-    		elapsed_seconds = 0;
-    		elapsed_hours = 0;
-    		elapsed_days = 0;
-    		led_state = 0;
-    		GPIOB->ODR &= ~(1U << 7); 
-    		}
-    		
-    	}
-    	prev_button = cur_button;
-    	
+	uint32_t seg = 0U;
+	uint32_t com = 0U;
+	uint32_t led_state = 0U;
+
+	LCD_Clear();
+	LCD_SetSegment(seg, com);
+	LCD_Update();
+
+while (1) {
+    uint32_t cur_sec = RTC->TR & 0x7FU;
+
+    if (cur_sec != prev_sec) {
+        prev_sec = cur_sec;
+
+        LCD_Clear();
+        LCD_SetSegment(seg, com);
+        LCD_Update();
+
+        if (led_state == 0U) {
+            GPIOB->ODR |= (1U << 7);
+            led_state = 1U;
+        } else {
+            GPIOB->ODR &= ~(1U << 7);
+            led_state = 0U;
+        }
+
+        seg++;
+
+        if (seg >= 24U) {
+            seg = 0U;
+            com++;
+        }
+
+        if (com >= 4U) {
+            com = 0U;
+        }
     }
+}
+
     
     return 0;
 }
