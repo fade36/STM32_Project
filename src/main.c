@@ -17,8 +17,6 @@ void GPIO_Init(void) {
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN;
 
     GPIOA->MODER &= ~3U;
-    GPIOB->MODER &= ~(3U << 14);
-    GPIOB->MODER |= (1U << 14);
 }
 
 void RTC_Init_LSI (void) {
@@ -110,6 +108,8 @@ void LCD_enable(void) {
 	    
 	    LCD->CR &= ~(1U << 1);	// VSEL 0
 	    
+	    LCD->CR |= (1U << 7);
+	    
 	    while ((LCD->SR & (1U << 5)) == 0U) {}
 	    
 	    LCD->FCR &= ~(15U << 22);	// PS /32
@@ -142,9 +142,143 @@ void LCD_SetSegment(uint32_t seg, uint32_t com) {
 
     LCD->RAM[ram_index] |= (1U << seg);
 }
+	//-------------------------------------------------------------
+	// taken from official repository STM32L152 Discovery glass LCD
+	// https://github.com/STMicroelectronics/STM32CubeL0/blob/master/Projects/NUCLEO-L053R8/Examples/LCD/LCD_SegmentsDrive/Src/stm32l152c_discovery_lcd.c
+	
+static const uint16_t LCD_NumberMap[10] = {
+    0x5F00, // 0
+    0x4200, // 1
+    0xF500, // 2
+    0x6700, // 3
+    0xEA00, // 4
+    0xAF00, // 5
+    0xBF00, // 6
+    0x4600, // 7
+    0xFF00, // 8
+    0xEF00  // 9
+};
 
+	#define LCD_CHAR_D 0x4714
+	#define LCD_CHAR_H 0xFA00
+	#define LCD_CHAR_R 0xFC01
+	#define LCD_CHAR_S 0xAF00
+	#define LCD_CHAR_T 0x0414
 
+static const uint8_t LCD_PositionSegments[6][4] = {
+    {0U,  1U, 28U, 29U}, // position 1
+    {2U,  7U, 26U, 27U}, // position 2
+    {8U,  9U, 24U, 25U}, // position 3
+    {10U, 11U, 20U, 21U}, // position 4
+    {12U, 13U, 18U, 19U}, // position 5
+    {14U, 15U, 17U, 16U}  // position 6
+};
 
+	//-------------------------------------------------------------
+	
+uint16_t LCD_GetCharMap(char ch){
+    if (ch >= '0' && ch <= '9') {
+        return LCD_NumberMap[ch - '0'];
+    }
+
+    if (ch == 'D' || ch == 'd') return LCD_CHAR_D;
+    if (ch == 'H' || ch == 'h') return LCD_CHAR_H;
+    if (ch == 'R' || ch == 'r') return LCD_CHAR_R;
+    if (ch == 'S' || ch == 's') return LCD_CHAR_S;
+    if (ch == 'T' || ch == 't') return LCD_CHAR_T;
+
+    return 0x0000; // space / unknown
+}
+
+void LCD_PutChar(uint32_t position, char ch){
+    uint16_t map = LCD_GetCharMap(ch);
+
+    if (position >= 6U) {
+        return;
+    }
+
+    for (uint32_t com = 0U; com < 4U; com++) {
+        uint32_t shift = 12U - (com * 4U);
+        uint32_t nibble = (map >> shift) & 0xFU;
+
+        for (uint32_t bit = 0U; bit < 4U; bit++) {
+            if (nibble & (1U << bit)) {
+                LCD_SetSegment(LCD_PositionSegments[position][bit], com);
+            }
+        }
+    }
+}
+
+void LCD_Print6(const char *text){
+    LCD_Clear();
+
+    for (uint32_t i = 0U; i < 6U; i++) {
+        if (text[i] == '\0') {
+            break;
+        }
+
+        LCD_PutChar(i, text[i]);
+    }
+
+    LCD_Update();
+}
+
+void LCD_ShowTime(uint32_t days, uint32_t hours){
+
+    char text[7];
+
+    if (days > 99U) {
+        days = 99U;
+    }
+
+    if (hours > 23U) {
+        hours = 23U;
+    }
+
+    text[0] = 'D';
+    text[1] = (char)('0' + (days / 10U));
+    text[2] = (char)('0' + (days % 10U));
+    text[3] = 'H';
+    text[4] = (char)('0' + (hours / 10U));
+    text[5] = (char)('0' + (hours % 10U));
+    text[6] = '\0';
+
+    LCD_Print6(text);
+}
+
+void LCD_ShowResetQuestion(void){
+    LCD_Print6("RST   ");
+}
+
+void Delay(volatile uint32_t delay){
+    while (delay != 0U) {
+        delay--;
+    }
+}
+
+void ElapsedTime_Tick(void){
+    elapsed_seconds++;
+
+    if (elapsed_seconds >= 40U) {
+        elapsed_seconds = 0U;
+        elapsed_hours++;
+
+        if (elapsed_hours >= 24U) {
+            elapsed_hours = 0U;
+            elapsed_days++;
+
+            if (elapsed_days > 99U) {
+                elapsed_days = 99U;
+            }
+        }
+    }
+}
+
+void ElapsedTime_Reset(void){
+    elapsed_seconds = 0U;
+    elapsed_hours = 0U;
+    elapsed_days = 0U;
+}
 
 int main(void) {
 
@@ -152,49 +286,64 @@ int main(void) {
     RTC_Init_LSI ();
 	LCD_GPIO_Init();
 	LCD_enable();
-	GPIOB->ODR &= ~(1U << 7);
 	
-    
+
     uint32_t prev_sec = RTC->TR & 0x7FU;
-	uint32_t seg = 0U;
-	uint32_t com = 0U;
-	uint32_t led_state = 0U;
+    uint32_t prev_button = GPIOA->IDR & 1U;
+    uint32_t mode = SLEEPING_MODE;
+    uint32_t mode_seconds = 0U;
 
-	LCD_Clear();
-	LCD_SetSegment(seg, com);
-	LCD_Update();
+    LCD_Clear();
+    LCD_Update();
 
-while (1) {
-    uint32_t cur_sec = RTC->TR & 0x7FU;
+    while (1) {
+        uint32_t cur_sec = RTC->TR & 0x7FU;
+        uint32_t cur_button = GPIOA->IDR & 1U;
 
-    if (cur_sec != prev_sec) {
-        prev_sec = cur_sec;
+        if (cur_sec != prev_sec) {
+            uint32_t old_hours = elapsed_hours;
+            uint32_t old_days = elapsed_days;
 
-        LCD_Clear();
-        LCD_SetSegment(seg, com);
-        LCD_Update();
+            prev_sec = cur_sec;
+            ElapsedTime_Tick();
 
-        if (led_state == 0U) {
-            GPIOB->ODR |= (1U << 7);
-            led_state = 1U;
-        } else {
-            GPIOB->ODR &= ~(1U << 7);
-            led_state = 0U;
+            if (mode != SLEEPING_MODE) {
+                mode_seconds++;
+
+                if (mode_seconds >= 30U) {
+                    mode = SLEEPING_MODE;
+                    mode_seconds = 0U;
+                    LCD_Clear();
+                    LCD_Update();
+                }
+            }
+
+            if ((mode == SHOWTIME_MODE) &&
+                ((old_hours != elapsed_hours) || (old_days != elapsed_days))) {
+                LCD_ShowTime(elapsed_days, elapsed_hours);
+            }
         }
 
-        seg++;
+        if ((prev_button == 0U) && (cur_button != 0U)) {
+            Delay(30000U);
 
-        if (seg >= 24U) {
-            seg = 0U;
-            com++;
+            if (mode == SLEEPING_MODE) {
+                mode = SHOWTIME_MODE;
+                mode_seconds = 0U;
+                LCD_ShowTime(elapsed_days, elapsed_hours);
+            } else if (mode == SHOWTIME_MODE) {
+                mode = RESET_MODE;
+                mode_seconds = 0U;
+                LCD_ShowResetQuestion();
+            } else {
+                ElapsedTime_Reset();
+                mode = SLEEPING_MODE;
+                mode_seconds = 0U;
+                LCD_Clear();
+                LCD_Update();
+            }
         }
 
-        if (com >= 4U) {
-            com = 0U;
-        }
+        prev_button = cur_button;
     }
-}
-
-    
-    return 0;
 }
