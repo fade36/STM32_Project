@@ -7,6 +7,7 @@
 static uint32_t elapsed_seconds = 0;
 static uint32_t elapsed_hours = 0;
 static uint32_t elapsed_days = 0;
+static volatile uint32_t button_pressed_event = 0U;
 
 #define SLEEPING_MODE 0
 #define SHOWTIME_MODE 1
@@ -44,6 +45,66 @@ void RTC_Init_LSI (void) {
     RTC->ISR &= ~(1U << 7);
 
     RTC->WPR = RTC_WRITE_LOCK;
+}
+
+void NVIC_EnableIRQ(uint32_t irq_number) {
+
+    NVIC_ISER0 = (1U << irq_number);
+}
+
+void Button_EXTI_Init(void) {
+
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+    SYSCFG->EXTICR[0] &= ~0xFU;
+
+    EXTI->IMR |= EXTI_LINE_BUTTON;
+    EXTI->RTSR |= EXTI_LINE_BUTTON;
+    EXTI->FTSR &= ~EXTI_LINE_BUTTON;
+    EXTI->PR = EXTI_LINE_BUTTON;
+
+    NVIC_EnableIRQ(NVIC_IRQ_EXTI0);
+}
+
+void RTC_Wakeup_Init(void) {
+
+    RTC->WPR = RTC_WRITE_KEY1;
+    RTC->WPR = RTC_WRITE_KEY2;
+
+    RTC->CR &= ~RTC_CR_WUTE;
+
+    while ((RTC->ISR & RTC_ISR_WUTWF) == 0U) {}
+
+    RTC->WUTR = 0U;
+    RTC->CR &= ~RTC_CR_WUCKSEL_MASK;
+    RTC->CR |= RTC_CR_WUCKSEL_1HZ;
+    RTC->ISR &= ~RTC_ISR_WUTF;
+    RTC->CR |= RTC_CR_WUTIE | RTC_CR_WUTE;
+
+    RTC->WPR = RTC_WRITE_LOCK;
+
+    EXTI->IMR |= EXTI_LINE_RTC_WAKEUP;
+    EXTI->RTSR |= EXTI_LINE_RTC_WAKEUP;
+    EXTI->PR = EXTI_LINE_RTC_WAKEUP;
+
+    NVIC_EnableIRQ(NVIC_IRQ_RTC_WKUP);
+}
+
+void EXTI0_IRQHandler(void) {
+
+    if ((EXTI->PR & EXTI_LINE_BUTTON) != 0U) {
+        EXTI->PR = EXTI_LINE_BUTTON;
+        button_pressed_event = 1U;
+    }
+}
+
+void RTC_WKUP_IRQHandler(void) {
+
+    if ((RTC->ISR & RTC_ISR_WUTF) != 0U) {
+        RTC->ISR &= ~RTC_ISR_WUTF;
+    }
+
+    EXTI->PR = EXTI_LINE_RTC_WAKEUP;
 }
 
 void Set_PIN_TO_AF11(GPIO_TypeDef *GPIOx, uint32_t pin) {
@@ -280,16 +341,22 @@ void ElapsedTime_Reset(void){
     elapsed_days = 0U;
 }
 
+void Enter_Sleep_Mode(void) {
+
+    SCB_SCR &= ~(1U << 2);
+    __asm volatile ("wfi");
+}
+
 int main(void) {
 
 	GPIO_Init();
     RTC_Init_LSI ();
 	LCD_GPIO_Init();
 	LCD_enable();
+	Button_EXTI_Init();
+    RTC_Wakeup_Init();
 	
-
     uint32_t prev_sec = RTC->TR & 0x7FU;
-    uint32_t prev_button = GPIOA->IDR & 1U;
     uint32_t mode = SLEEPING_MODE;
     uint32_t mode_seconds = 0U;
 
@@ -298,7 +365,6 @@ int main(void) {
 
     while (1) {
         uint32_t cur_sec = RTC->TR & 0x7FU;
-        uint32_t cur_button = GPIOA->IDR & 1U;
 
         if (cur_sec != prev_sec) {
             uint32_t old_hours = elapsed_hours;
@@ -324,8 +390,9 @@ int main(void) {
             }
         }
 
-        if ((prev_button == 0U) && (cur_button != 0U)) {
-            Delay(30000U);
+        if (button_pressed_event != 0U) {
+        
+            button_pressed_event = 0U;
 
             if (mode == SLEEPING_MODE) {
                 mode = SHOWTIME_MODE;
@@ -342,8 +409,14 @@ int main(void) {
                 LCD_Clear();
                 LCD_Update();
             }
+            
+            Delay(30000U);
+            button_pressed_event = 0U;
+            EXTI->PR = EXTI_LINE_BUTTON;
         }
 
-        prev_button = cur_button;
+        if (mode == SLEEPING_MODE) {
+            Enter_Sleep_Mode();
+        }
     }
 }
