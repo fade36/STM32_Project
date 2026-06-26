@@ -409,12 +409,12 @@ int main(void) {
                 LCD_Clear();
                 LCD_Update();
             }
-            
+            Delay(30000U);
             button_pressed_event = 0U;
             EXTI->PR = EXTI_LINE_BUTTON;
         }
         
-		Delay(30000);
+		
         if (mode == SLEEPING_MODE) {
             Enter_Sleep_Mode();
         }
