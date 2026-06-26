@@ -415,8 +415,7 @@ int main(void) {
             EXTI->PR = EXTI_LINE_BUTTON;
         }
 
-        if (mode == SLEEPING_MODE) {
-            Enter_Sleep_Mode();
+
         }
     }
 }
