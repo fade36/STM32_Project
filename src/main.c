@@ -9,9 +9,9 @@ static uint32_t elapsed_hours = 0;
 static uint32_t elapsed_days = 0;
 static volatile uint32_t button_pressed_event = 0U;
 
-#define SLEEPING_MODE 0
-#define SHOWTIME_MODE 1
-#define RESET_MODE 2
+#define SLEEPING_MODE 0U
+#define SHOWTIME_MODE 1U
+#define RESET_MODE 2U
 
 void GPIO_Init(void) {
 
@@ -320,7 +320,7 @@ void Delay(volatile uint32_t delay){
 void ElapsedTime_Tick(void){
     elapsed_seconds++;
 
-    if (elapsed_seconds >= 3600U) {
+    if (elapsed_seconds >= 20U) {
         elapsed_seconds = 0U;
         elapsed_hours++;
 
@@ -410,12 +410,13 @@ int main(void) {
                 LCD_Update();
             }
             
-            Delay(30000U);
             button_pressed_event = 0U;
             EXTI->PR = EXTI_LINE_BUTTON;
         }
-
-
+        
+		Delay(30000);
+        if (mode == SLEEPING_MODE) {
+            Enter_Sleep_Mode();
         }
     }
 }
