@@ -66,7 +66,9 @@ void Button_EXTI_Init(void) {
     NVIC_EnableIRQ(NVIC_IRQ_EXTI0);
 }
 
-void RTC_Wakeup_Init(void) {
+void RTC_Wakeup_Init(void) { 
+
+	// RTC wakeup event guide rm0038
 
     RTC->WPR = RTC_WRITE_KEY1;
     RTC->WPR = RTC_WRITE_KEY2;
@@ -390,6 +392,7 @@ int main(void) {
             }
         }
 
+
         if (button_pressed_event != 0U) {
         
             button_pressed_event = 0U;
@@ -409,12 +412,11 @@ int main(void) {
                 LCD_Clear();
                 LCD_Update();
             }
+            
             Delay(30000U);
-            button_pressed_event = 0U;
             EXTI->PR = EXTI_LINE_BUTTON;
         }
         
-		
         if (mode == SLEEPING_MODE) {
             Enter_Sleep_Mode();
         }
