@@ -322,7 +322,7 @@ void Delay(volatile uint32_t delay){
 void ElapsedTime_Tick(void){
     elapsed_seconds++;
 
-    if (elapsed_seconds >= 20U) {
+    if (elapsed_seconds >= 3600U) {
         elapsed_seconds = 0U;
         elapsed_hours++;
 

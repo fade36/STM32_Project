@@ -26,13 +26,13 @@
 #define EXTI_LINE_BUTTON      1U
 #define EXTI_LINE_RTC_WAKEUP  (1U << 20)
 
-#define NVIC_IRQ_RTC_WKUP     3U
+#define NVIC_IRQ_RTC_WKUP     3U // Vector table
 #define NVIC_IRQ_EXTI0        6U
 
-#define RTC_ISR_WUTWF         (1U << 2)
-#define RTC_ISR_WUTF          (1U << 10)
-#define RTC_CR_WUTE           (1U << 10)
-#define RTC_CR_WUTIE          (1U << 14)
+#define RTC_ISR_WUTWF         (1U << 2)  // Wakeup timer write flag
+#define RTC_ISR_WUTF          (1U << 10)  // Wakeup Timer Flag
+#define RTC_CR_WUTE           (1U << 10) // Wakeup timer enable
+#define RTC_CR_WUTIE          (1U << 14) // Wakeup timer interrupt enable
 #define RTC_CR_WUCKSEL_MASK   7U
 #define RTC_CR_WUCKSEL_1HZ    4U
 
